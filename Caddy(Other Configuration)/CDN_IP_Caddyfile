@@ -1,0 +1,52 @@
+#套Cloudflare CDN后Xray/V2Ray日志显示客户端真实IP配置
+#1、trusted_proxies应用全局配置块（反代WebSocket有效）
+		trusted_proxies cloudflare {
+			interval 12h
+			timeout 15s
+		}
+#备注：
+#1、本项目Caddy从版本v2.6.4开始才支持caddy-cloudflare-ip插件应用。
+#2、若使用其它非Cloudflare CDN后也想实现此效果，需自己调整trusted_proxies的参数。
+
+#在全局选项块的对应服务器选项中加入上述配置块
+{
+#........<省略>........
+	servers :443 { #此处servers标识位置，其参数必须以实际或对应配置示例为准。
+#........<省略>........
+		trusted_proxies cloudflare {
+			interval 12h
+			timeout 15s
+		}
+}
+
+
+#2、realip插件应用配置块（反代gRPC有效）
+	order realip before reverse_proxy
+
+	realip {
+		header "X-Forwarded-For"
+		from cloudflare
+		maxhops 5
+	}
+#备注：
+#1、本项目Caddy从版本v2.6.4开始才支持realip插件应用。
+#2、若使用其它非Cloudflare CDN后也想实现此效果，需自己调整realip的参数。
+
+#在全局选项块与对应站点块中分别加入上述配置块
+{
+#........<省略>........
+	order realip before reverse_proxy
+	admin off #在admin off上插入上面参数
+#........<省略>........
+}
+#........<省略>........
+	tls {
+		ciphers TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+		curves x25519 secp521r1 secp384r1 secp256r1
+	} #在TLS配置块下插入下面配置块
+	realip {
+		header "X-Forwarded-For"
+		from cloudflare
+		maxhops 5
+	}
+#........<省略>........
